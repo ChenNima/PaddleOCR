@@ -27,7 +27,7 @@ from paddle import ParamAttr
 class SDMGRHead(nn.Layer):
     def __init__(self,
                  in_channels,
-                 num_chars=92,
+                 num_chars=6624,
                  visual_dim=16,
                  fusion_dim=1024,
                  node_input=32,
@@ -35,7 +35,7 @@ class SDMGRHead(nn.Layer):
                  edge_input=5,
                  edge_embed=256,
                  num_gnn=2,
-                 num_classes=26,
+                 num_classes=27,
                  bidirectional=False):
         super().__init__()
 

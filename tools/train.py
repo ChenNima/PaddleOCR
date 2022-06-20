@@ -185,6 +185,7 @@ def test_reader(config, device, logger):
 
 
 if __name__ == '__main__':
+    os.environ['__NV_PRIME_RENDER_OFFLOAD'] = '1' # use NV gpu only
     config, device, logger, vdl_writer = program.preprocess(is_train=True)
     seed = config['Global']['seed'] if 'seed' in config['Global'] else 1024
     set_seed(seed)
