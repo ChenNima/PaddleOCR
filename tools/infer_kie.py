@@ -52,11 +52,12 @@ def draw_kie_result(batch, node, idx_to_cls, count):
     img = batch[6].copy()
     boxes = batch[7]
     h, w = img.shape[:2]
-    pred_img = np.ones((h, w * 2, 3), dtype=np.uint8) * 255
     max_value, max_idx = paddle.max(node, -1), paddle.argmax(node, -1)
     node_pred_label = max_idx.numpy().tolist()
     node_pred_score = max_value.numpy().tolist()
 
+    vis_img = np.ones((h, w, 3), dtype=np.uint8) * 255
+    vis_img[:, :w] = img
     for i, box in enumerate(boxes):
         if i >= len(node_pred_label):
             break
@@ -64,7 +65,7 @@ def draw_kie_result(batch, node, idx_to_cls, count):
                    [box[0], box[3]]]
         Pts = np.array([new_box], np.int32)
         cv2.polylines(
-            img, [Pts.reshape((-1, 1, 2))],
+            vis_img, [Pts.reshape((-1, 1, 2))],
             True,
             color=(255, 255, 0),
             thickness=1)
@@ -76,11 +77,8 @@ def draw_kie_result(batch, node, idx_to_cls, count):
             pred_label = idx_to_cls[pred_label]
         pred_score = '{:.2f}'.format(node_pred_score[i])
         text = pred_label + '(' + pred_score + ')'
-        cv2.putText(pred_img, text, (x_min * 2, y_min),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
-    vis_img = np.ones((h, w * 3, 3), dtype=np.uint8) * 255
-    vis_img[:, :w] = img
-    vis_img[:, w:] = pred_img
+        cv2.putText(vis_img, text, (x_min, y_min),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
     save_kie_path = os.path.dirname(config['Global'][
         'save_res_path']) + "/kie_results/"
     if not os.path.exists(save_kie_path):
