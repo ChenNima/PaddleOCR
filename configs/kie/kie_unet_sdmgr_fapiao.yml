@@ -1,19 +1,19 @@
 Global:
   use_gpu: True
-  epoch_num: 7
+  epoch_num: 5
   log_smooth_window: 20
   print_batch_step: 50
   save_model_dir: ./output/kie_5/
   save_epoch_step: 50
   # evaluation is run every 5000 iterations after the 4000th iteration
-  eval_batch_step: [ 0, 700 ]
+  eval_batch_step: [ 0, 300 ]
   # 1. If pretrained_model is saved in static mode, such as classification pretrained model
   #    from static branch, load_static_weights must be set as True.
   # 2. If you want to finetune the pretrained models we provide in the docs,
   #    you should set load_static_weights as False.
   load_static_weights: False
   cal_metric_during_train: False
-  pretrained_model: 
+  pretrained_model: ./output/kie_fapiao_best/best_accuracy
   checkpoints:
   save_inference_dir:
   use_visualdl: False
@@ -58,9 +58,21 @@ Metric:
 Train:
   dataset:
     name: SimpleDataSet
-    data_dir: ./train_data/fapiao/
-    label_file_list: [ './train_data/fapiao/tag.txt' ]
-    ratio_list: [ 1.0 ]
+    data_dir: ./train_data/fapiao_cat/
+    label_file_list: [
+      './train_data/fapiao_cat/bill/train.txt',
+      './train_data/fapiao_cat/fixAmount/train.txt',
+      './train_data/fapiao_cat/taxi/train.txt',
+      './train_data/fapiao_cat/toll/train.txt',
+      './train_data/fapiao_cat/vatElectric/train.txt',
+      './train_data/fapiao_cat/vatGeneral/train.txt',
+      './train_data/fapiao_cat/vatRoll/train.txt',
+      './train_data/fapiao_cat/vatSpecial/train.txt',
+      './train_data/fapiao_cat/vatToll/train.txt',
+    ]
+    # ratio_list: [ 0.1, 0.1, 0.1, 0.1, 0.2, 0.1, 0.1, 0.1, 0.1 ]
+    ratio_list: [ 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0 ]
+    # ratio_list: [ 0, 1.0, 0, 0, 0, 0, 0, 0, 0 ]
     transforms:
       - DecodeImage: # load image
           img_mode: RGB
@@ -81,15 +93,22 @@ Train:
     shuffle: True
     drop_last: False
     batch_size_per_card: 1
-    num_workers: 4
+    num_workers: 0
 
 Eval:
   dataset:
     name: SimpleDataSet
-    data_dir: ./train_data/fapiao
+    data_dir: ./train_data/fapiao_cat
     label_file_list:
-      - ./train_data/fapiao/validation.txt
-      # - /paddle/data/PaddleOCR/train_data/wildreceipt/1.txt
+      - ./train_data/fapiao_cat/bill/validation.txt
+      - ./train_data/fapiao_cat/fixAmount/validation.txt
+      - ./train_data/fapiao_cat/taxi/validation.txt
+      - ./train_data/fapiao_cat/toll/validation.txt
+      - ./train_data/fapiao_cat/vatElectric/validation.txt
+      - ./train_data/fapiao_cat/vatGeneral/validation.txt
+      - ./train_data/fapiao_cat/vatRoll/validation.txt
+      - ./train_data/fapiao_cat/vatSpecial/validation.txt
+      - ./train_data/fapiao_cat/vatToll/validation.txt
     transforms:
       - DecodeImage: # load image
           img_mode: RGB
