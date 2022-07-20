@@ -130,7 +130,7 @@ class OCRSystem(hub.Module):
                 rec_res_final.append({
                     'text': text,
                     'confidence': float(score),
-                    'text_region': dt_boxes[dno].astype(np.int).tolist()
+                    'text_box_position': dt_boxes[dno].astype(np.int).tolist()
                 })
             all_results.append(rec_res_final)
         return all_results
@@ -142,7 +142,10 @@ class OCRSystem(hub.Module):
         """
         images_decode = [base64_to_cv2(image) for image in images]
         results = self.predict(images_decode, **kwargs)
-        return results
+        resMap = map(lambda res: {
+            'data': res
+        }, results)
+        return list(resMap)
 
 
 if __name__ == '__main__':
