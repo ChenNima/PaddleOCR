@@ -1,0 +1,109 @@
+# Overview
+#
+# This file is used to configure your build environment and run your build commands
+# and scripts.
+#
+# Usage
+#
+#   - Define requirements for your build environment
+#   - Install any required tools or packages
+#   - Run any build commands or scripts to build your project
+#   - Promote your artifact using the supply-chain CLI to the deployment environment(s) defined in TARGET_ENVS
+# 
+# The example that we provide for the name of the artifact in this buildspec.yml file names the file 
+# using the git branch name found in the $CODEBUILD_WEBHOOK_TRIGGER environment variable.
+#
+# At the end you will create a zip file of your deployment workspace and promote it using the supply-chain CLI. This zip file:
+#    - Must include the deployspec.yml
+#    - Must include any deployment scripts used to deploy
+#  
+#  More Information:
+#
+#  - AWS buildspec.yml - https://docs.aws.amazon.com/codebuild/latest/userguide/build-spec-ref.html
+#  - supply-chain CLI - https://github.concur.com/ktg/supply-chain#readme
+
+version: 0.2
+
+env:
+  #
+  # List of secrets (how to create : https://wiki.concur.com/confluence/display/CSS/Secret+Management+-+Release+Pipeline)
+  #
+  parameter-store:
+    QUAY_ROBOT_USERNAME: "/fapiao/quay/login"
+    QUAY_ROBOT_TOKEN: "/fapiao/quay/token"
+
+    GITHUB_API_TOKEN: "/fapiao/github/APIToken"
+    # Used to interact with Slack
+    SLACK_WEBHOOK_URL: "/fapiao/slack/SLACK_WEBHOOK_URL"
+  # secrets-manager:
+  #   QUAY_USER: fapiao/quay/login
+  #   QUAY_TOKEN: fapiao/quay/token
+
+  #
+  # List of variables
+  #
+  variables:
+    ORG: fapiao
+    REPO: PaddleOCR
+    ROLETYPE: fapiao
+    GIT_BRANCH: "" # to be computed in pre-build phase
+    GITHUB_CLI_VERSION: "2.7.0"
+    GITHUB_REPOSITORY: "fapiao/PaddleOCR"
+    GITHUB_NAMESPACE_REPOS_REPOSITORY: "namespace-repos/efapiao"
+
+    QUAY_HOSTNAME: quay.cnqr.delivery
+    QUAY_REPOSITORY: "fapiao/paddlehub"
+    SERVICE_MESH_VERSION: "0.2888.0"
+
+    # Images used for pipeline
+    KATE_IMAGE: "quay.cnqr.delivery/kraken/kate:v1.0.4"
+    SUPPLY_CHAIN_IMAGE: "quay.cnqr.delivery/ktg/supply-chain@sha256:f7a6b23c87cd45e744bbab4d4911b604a178f8c60da46d92c12f106bfdb9d885" # v0.0.5
+
+    # Will host the absolute path of the current directory
+    WORKDIR: "" # to be computed in pre-build phase
+    # Build status
+    BUILD_SUCCESSFUL: "N"
+
+phases:
+  install:
+    runtime-versions:
+      docker: 19
+    commands:
+      # Install GitHub CLI
+      - rpm -i https://github.com/cli/cli/releases/download/v${GITHUB_CLI_VERSION}/gh_${GITHUB_CLI_VERSION}_linux_386.rpm
+  pre_build:
+    on-failure: ABORT
+    commands:
+      # Connects to GitHub
+      - echo ${GITHUB_API_TOKEN} | gh auth login --hostname github.concur.com --with-token
+      # Pull shared scripts
+      - gh auth setup-git
+      - gh repo clone eden/secure-pipeline-scripts
+      # Allows execution of embedded pipeline scripts and functions
+      - chmod +x -R ./scripts/*
+      - chmod +x -R ./secure-pipeline-scripts/*
+      # Set WORKDIR
+      - WORKDIR=$(pwd)
+      # Identify the current branch name
+      - GIT_BRANCH=$(echo "${CODEBUILD_WEBHOOK_HEAD_REF}" | sed "s@refs/heads/@@") 
+      - GIT_SHORT_COMMIT=$(git log -n 1 --format=%h)
+      - COMMIT_AUTHOR=$(git log -n 1 --format=%an)
+      - echo ">>> ${CODEBUILD_WEBHOOK_HEAD_REF}"
+      - echo ">>> Branch -> ${GIT_BRANCH}"
+  build:
+    commands:
+      - ./scripts/pipeline/pipeline.sh
+      - BUILD_SUCCESSFUL="Y"
+    finally:
+      - |
+        if [ "${BUILD_SUCCESSFUL}" == "N" ]; then
+          "${WORKDIR}"/secure-pipeline-scripts/notification/slack.sh "#fapiao-ci" "Repo: ${GITHUB_REPOSITORY} Branch : ${GIT_BRANCH}" "danger" "${GIT_SHORT_COMMIT} by ${COMMIT_AUTHOR} Build failed" ""
+        else
+          "${WORKDIR}"/secure-pipeline-scripts/notification/slack.sh "#fapiao-ci" "Repo: ${GITHUB_REPOSITORY} Branch : ${GIT_BRANCH}" "good" "${GIT_SHORT_COMMIT} by ${COMMIT_AUTHOR} Build completed" ""
+        fi
+
+# reports:
+#   junit-reports:
+#     files:
+#       - "**/build/test-results/test/*.xml"
+#     file-format: "JUNITXML"
