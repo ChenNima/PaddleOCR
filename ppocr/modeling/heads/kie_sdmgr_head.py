@@ -18,8 +18,9 @@ from __future__ import division
 from __future__ import print_function
 
 import math
+import numpy as np
 import paddle
-from paddle import nn
+from paddle import dtype, nn
 import paddle.nn.functional as F
 from paddle import ParamAttr
 
@@ -51,19 +52,27 @@ class SDMGRHead(nn.Layer):
         self.edge_cls = nn.Linear(edge_embed, 2)
 
     def forward(self, input, targets):
+        print("start head")
         relations, texts, x = input
-        node_nums, char_nums = [], []
+        node_nums, char_nums, char_nums_max = [], [], []
         for text in texts:
             node_nums.append(text.shape[0])
-            char_nums.append(paddle.sum((text > -1).astype(int), axis=-1))
-
-        max_num = max([char_num.max() for char_num in char_nums])
-        all_nodes = paddle.concat([
-            paddle.concat(
-                [text, paddle.zeros(
-                    (text.shape[0], max_num - text.shape[1]))], -1)
-            for text in texts
-        ])
+            text_num = paddle.fmin(paddle.to_tensor(text, 'int64') + 1, paddle.to_tensor([1]))
+            text_sum = paddle.sum(text_num, axis=-1)
+            char_nums.append(text_sum)
+            char_nums_max.append(text_sum.max())
+        max_num = max(char_nums_max)
+        max_num = paddle.to_tensor(max_num, dtype='int64')
+        # max_num = max_num.astype('int64')
+        print("end head")
+        all_nodes = []
+        for text in texts:
+            print(text.shape)
+            zeros = paddle.zeros((text.shape[0], max_num - text.shape[1]))
+            node = paddle.concat([text, zeros])
+            print(node.shape)
+            all_nodes.append(node)
+        all_nodes = paddle.concat(all_nodes)
         temp = paddle.clip(all_nodes, min=0).astype(int)
         embed_nodes = self.node_embed(temp)
         rnn_nodes, _ = self.rnn(embed_nodes)

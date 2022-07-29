@@ -18,6 +18,8 @@ from __future__ import print_function
 
 import paddle
 from paddle import nn
+from paddle.jit import to_static
+from paddle.static import InputSpec
 import numpy as np
 import cv2
 
@@ -137,38 +139,32 @@ class Kie_backbone(nn.Layer):
         self.maxpool = nn.MaxPool2D(kernel_size=7)
 
     def bbox2roi(self, bbox_list):
-        rois_list = []
+        print("start bbox2roi")
         rois_num = []
         for img_id, bboxes in enumerate(bbox_list):
             rois_num.append(bboxes.shape[0])
-            rois_list.append(bboxes)
-        rois = paddle.concat(rois_list, 0)
+        rois = paddle.concat(bbox_list, 0)
         rois_num = paddle.to_tensor(rois_num, dtype='int32')
+        print("end bbox2roi")
         return rois, rois_num
 
     def pre_process(self, img, relations, texts, gt_bboxes, tag, img_size):
-        img, relations, texts, gt_bboxes, tag, img_size = img.numpy(
-        ), relations.numpy(), texts.numpy(), gt_bboxes.numpy(), tag.numpy(
-        ).tolist(), img_size.numpy()
         temp_relations, temp_texts, temp_gt_bboxes = [], [], []
-        h, w = int(np.max(img_size[:, 0])), int(np.max(img_size[:, 1]))
-        img = paddle.to_tensor(img[:, :, :h, :w])
-        batch = len(tag)
+        h, w = int(paddle.max(img_size[:, 0])), int(paddle.max(img_size[:, 1]))
+        temp_img = img[:, :, :h, :w].astype('float32')
+        # temp_img = img.astype('float32')
+        batch = tag.shape[0]
         for i in range(batch):
             num, recoder_len = tag[i][0], tag[i][1]
-            temp_relations.append(
-                paddle.to_tensor(
-                    relations[i, :num, :num, :], dtype='float32'))
-            temp_texts.append(
-                paddle.to_tensor(
-                    texts[i, :num, :recoder_len], dtype='float32'))
-            temp_gt_bboxes.append(
-                paddle.to_tensor(
-                    gt_bboxes[i, :num, ...], dtype='float32'))
-        return img, temp_relations, temp_texts, temp_gt_bboxes
+            temp_relations.append(relations[i, :num, :num, :].astype('float32'))
+            temp_texts.append(texts[i, :num, :recoder_len].astype('float32'))
+            temp_gt_bboxes.append(gt_bboxes[i, :num, :].astype('float32'))
+        return temp_img, temp_relations, temp_texts, temp_gt_bboxes
 
     def forward(self, inputs):
+        print('start backbone')
         img = inputs[0]
+        img = paddle.reshape(img, shape=[img.shape[0], 3, img.shape[2], -1])
         relations, texts, gt_bboxes, tag, img_size = inputs[1], inputs[
             2], inputs[3], inputs[5], inputs[-1]
         img, relations, texts, gt_bboxes = self.pre_process(
@@ -178,4 +174,5 @@ class Kie_backbone(nn.Layer):
         feats = paddle.vision.ops.roi_align(
             x, boxes, spatial_scale=1.0, output_size=7, boxes_num=rois_num)
         feats = self.maxpool(feats).squeeze(-1).squeeze(-1)
+        print('end backbone')
         return [relations, texts, feats]
