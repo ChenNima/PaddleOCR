@@ -13,7 +13,7 @@ Global:
   #    you should set load_static_weights as False.
   load_static_weights: False
   cal_metric_during_train: False
-  pretrained_model: ./output/kie_fapiao_best/best_accuracy
+  # pretrained_model: ./output/kie_fapiao_best/best_accuracy
   checkpoints:
   save_inference_dir:
   use_visualdl: False
@@ -21,6 +21,9 @@ Global:
   infer_img: ./train_data/fapiao/test.txt
   save_res_path: ./output/sdmgr_kie/predicts_kie.txt
   img_scale: [ 1024, 512 ]
+  use_amp: True
+  scale_loss: 1024.00
+  use_dynamic_loss_scaling: True
 
 Architecture:
   model_type: kie
@@ -98,7 +101,7 @@ Train:
 Eval:
   dataset:
     name: SimpleDataSet
-    data_dir: ./train_data/fapiao_cat
+    data_dir: ./train_data/fapiao
     label_file_list:
       - ./train_data/fapiao_cat/bill/validation.txt
       - ./train_data/fapiao_cat/fixAmount/validation.txt
