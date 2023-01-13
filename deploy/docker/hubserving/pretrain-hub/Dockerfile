@@ -1,4 +1,4 @@
-FROM paddlepaddle/paddle:2.3.0
+FROM paddlepaddle/paddle:2.4.1
 
 RUN pip install paddlehub
 
